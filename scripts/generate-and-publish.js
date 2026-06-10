@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import fs from 'fs';
 import { getTopicForRun, getTotalTopics, CATEGORIES } from './topics.js';
+import { fetchHotels, fetchActivities, buildAffiliateHTML } from './affiliate-block.js';
 
 const logs = [];
 function log(msg) {
@@ -47,22 +48,21 @@ function buildPrompt(topicData) {
 כללי כתיבה:
 - עברית שוטפת וטבעית, לא מתורגמת
 - פתח עם משפט מושך שגורם לקורא להמשיך לקרוא
-- כתוב בגוף ראשון כשזה מוסיף אמינות ("כשהגעתי לראשונה...", "הטיפ שאיש לא אומר לך...")
+- כתוב בגוף ראשון כשזה מוסיף אמינות
 - השתמש בשמות מקומות אמיתיים בתעתיק עברי + באנגלית בסוגריים
 - מחירים ריאליים ב-2025: בבהט ובשקלים בערך (חלק ב-10 לקירוב)
 
 מבנה חובה (700-900 מילים):
 1. פתיח מושך — סצנה, שאלה, או עובדה מפתיעה (2-3 משפטים)
 2. גוף מאמר עם 3-4 כותרות h2
-3. לפחות קטע אחד עם כותרת h3 "הטיפ שאיש לא אומר לך" — המלצה שאנשים לא מוצאים בגוגל
+3. לפחות קטע אחד עם כותרת h3 "הטיפ שאיש לא אומר לך"
 4. טבלה השוואתית או רשימה מובנית כשרלוונטי
-5. סקשן עם כותרת h3 "מה חדש ב-2025" — מקום/שירות/שינוי שנפתח לאחרונה
+5. סקשן עם כותרת h3 "מה חדש ב-2025"
 6. CTA אחד בסוף — קצר, טבעי, לא מכירתי
 
 אסור לכתוב:
 - "מסעדה מומלצת" בלי שם ספציפי
 - "כ-X בהט" בלי מחיר ספציפי
-- משפטים כמו "קוסמוי היא יעד תיירותי פופולרי" — ברור ומיותר
 - יותר מ-2 סימני קריאה בכל המאמר
 
 החזר בדיוק במבנה הבא ללא שום טקסט לפני או אחרי:
@@ -79,7 +79,6 @@ function buildPrompt(topicData) {
 }
 
 function parseResponse(text) {
-  // ניסיון 1 — XML tags
   const extract = (tag) => {
     const match = text.match(new RegExp(`<${tag}>[\\s\\S]*?<\\/${tag}>`));
     if (match) return match[0].replace(`<${tag}>`, '').replace(`</${tag}>`, '').trim();
@@ -95,27 +94,20 @@ function parseResponse(text) {
     return { title: titleXml, excerpt: excerpt || titleXml, content: contentXml, seoDescription: seo || '' };
   }
 
-  // ניסיון 2 — JSON fallback
+  // JSON fallback
   log('⚠️ XML לא נמצא, מנסה JSON...');
   let cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (jsonMatch) cleaned = jsonMatch[0];
-
   try {
     const parsed = JSON.parse(cleaned);
     if (parsed.title && parsed.content) {
       log(`✅ פורסר JSON — כותרת: "${parsed.title}"`);
-      return {
-        title: parsed.title,
-        excerpt: parsed.excerpt || parsed.title,
-        content: parsed.content,
-        seoDescription: parsed.seoDescription || '',
-      };
+      return { title: parsed.title, excerpt: parsed.excerpt || parsed.title, content: parsed.content, seoDescription: parsed.seoDescription || '' };
     }
   } catch (e) {
     log(`❌ JSON נכשל: ${e.message}`);
   }
-
   log(`Raw (300): ${text.substring(0, 300)}`);
   throw new Error('לא הצלחנו לפרסר את תגובת Claude');
 }
@@ -135,10 +127,7 @@ async function generateArticle(prompt) {
       messages: [{ role: 'user', content: prompt }],
     }),
   });
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Claude API שגיאה ${response.status}: ${err}`);
-  }
+  if (!response.ok) throw new Error(`Claude API שגיאה ${response.status}: ${await response.text()}`);
   const data = await response.json();
   const rawText = data.content[0].text.trim();
   log(`✅ תגובה התקבלה (${rawText.length} תווים)`);
@@ -146,10 +135,9 @@ async function generateArticle(prompt) {
 }
 
 async function getOrCreateCategory(slug, name, wpBase, auth) {
-  const searchRes = await fetch(
-    `${wpBase}/wp-json/wp/v2/categories?slug=${slug}&per_page=1`,
-    { headers: { Authorization: `Basic ${auth}` } }
-  );
+  const searchRes = await fetch(`${wpBase}/wp-json/wp/v2/categories?slug=${slug}&per_page=1`, {
+    headers: { Authorization: `Basic ${auth}` },
+  });
   const existing = await searchRes.json();
   if (existing.length > 0) {
     log(`📁 קטגוריה קיימת: ${name} (ID: ${existing[0].id})`);
@@ -194,14 +182,48 @@ async function publishToWordPress(article, topicData) {
 }
 
 async function main() {
-  log('🌴 Koh Samui Content Bot v2 — מתחיל...');
-  const required = ['CLAUDE_API_KEY', 'WP_SITE_URL', 'WP_USER', 'WP_APP_PASSWORD'];
+  log('🌴 Koh Samui Content Bot v3 — מתחיל...');
+  const required = ['CLAUDE_API_KEY', 'WP_SITE_URL', 'WP_USER', 'WP_APP_PASSWORD', 'AGODA_SITE_ID', 'AGODA_API_KEY', 'VIATOR_API_KEY', 'VIATOR_PARTNER_ID'];
   for (const key of required) {
     if (!process.env[key]) throw new Error(`חסר משתנה סביבה: ${key}`);
   }
+
   try {
     const topicData = selectTopic();
+
+    // 1. כתיבת המאמר
     const article = await generateArticle(buildPrompt(topicData));
+
+    // 2. שליפת מלונות ואטרקציות במקביל
+    log('🏨 שולף מלונות מ-Agoda...');
+    log('🎯 שולף אטרקציות מ-Viator...');
+    const [hotelsData, activitiesData] = await Promise.all([
+      fetchHotels(topicData.category, process.env.AGODA_SITE_ID, process.env.AGODA_API_KEY, fetch),
+      fetchActivities(topicData.category, process.env.VIATOR_PARTNER_ID, process.env.VIATOR_API_KEY, fetch),
+    ]);
+
+    if (hotelsData?.hotels?.length > 0) {
+      log(`✅ ${hotelsData.hotels.length} מלונות נשלפו`);
+    } else {
+      log('⚠️ Agoda — fallback לקישור כללי');
+    }
+    if (activitiesData?.products?.length > 0) {
+      log(`✅ ${activitiesData.products.length} אטרקציות נשלפו`);
+    } else {
+      log('⚠️ Viator — fallback לקישור כללי');
+    }
+
+    // 3. הוספת בלוק אפיליאציה לסוף המאמר
+    const affiliateHTML = buildAffiliateHTML(
+      hotelsData,
+      activitiesData,
+      topicData.category,
+      process.env.AGODA_SITE_ID
+    );
+    article.content = article.content + affiliateHTML;
+    log('💰 בלוק אפיליאציה הוסף למאמר');
+
+    // 4. פרסום
     await publishToWordPress(article, topicData);
     log('✅ הצלחה!');
   } catch (err) {
