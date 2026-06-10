@@ -169,7 +169,7 @@ async function publishToWordPress(article, topicData) {
 }
 
 async function main() {
-  log('🌴 Koh Samui Content Bot — מתחיל...');
+  log('🌴 Koh Samui Content Bot v2 — מתחיל...');
   const required = ['CLAUDE_API_KEY', 'WP_SITE_URL', 'WP_USER', 'WP_APP_PASSWORD'];
   for (const key of required) {
     if (!process.env[key]) throw new Error(`חסר משתנה סביבה: ${key}`);
