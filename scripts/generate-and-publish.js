@@ -12,7 +12,6 @@ function saveLogs() {
   fs.writeFileSync('last-run.log', logs.join('\n'), 'utf8');
 }
 
-// ── בחירת נושא ──────────────────────────────────────────────
 function selectTopic() {
   const override = process.env.TOPIC_OVERRIDE?.trim();
   const catOverride = process.env.CATEGORY_OVERRIDE?.trim();
@@ -33,7 +32,6 @@ function selectTopic() {
   return selected;
 }
 
-// ── פרומפט מדויק ────────────────────────────────────────────
 function buildPrompt(topicData) {
   return `אתה דני כהן — כתב תיירות ישראלי בכיר, 15 שנות ניסיון.
 גרת בקוסמוי 3 חודשים ב-2024. מכיר כל פינה. כתבת לטיים אאוט, ynet טיול, ערוץ 12.
@@ -42,50 +40,49 @@ function buildPrompt(topicData) {
 נושא: "${topicData.topic}"
 קטגוריה: ${topicData.categoryHebrew}
 
-═══ כללי כתיבה ═══
+כללי כתיבה:
 שפה: עברית שוטפת, חמה, בגוף ראשון כשמוסיף אמינות
-אורך: 900–1,100 מילים
+אורך: 900-1,100 מילים
 פתיחה: סצנה ספציפית, שאלה מפתיעה, או עובדה שרוב האנשים לא יודעים
 
-═══ מבנה חובה ═══
-1. פתיח מושך (2-3 משפטים) — לא "קוסמוי היא יעד פופולרי"
-2. 3-4 כותרות <h2> ברורות
-3. כותרת <h3> "הטיפ שאיש לא אומר לך" — משהו שרק מי שגר שם יודע
-4. כותרת <h3> "מה חדש ב-2025" — עדכון אמיתי
-5. טבלה השוואתית אחת לפחות (<table>) כשרלוונטי
-6. CTA טבעי בסוף — לא מכירתי
+מבנה חובה:
+1. פתיח מושך (2-3 משפטים) - לא "קוסמוי היא יעד פופולרי"
+2. 3-4 כותרות h2 ברורות
+3. כותרת h3 "הטיפ שאיש לא אומר לך" - משהו שרק מי שגר שם יודע
+4. כותרת h3 "מה חדש ב-2025" - עדכון אמיתי
+5. טבלה השוואתית אחת לפחות כשרלוונטי
+6. CTA טבעי בסוף - לא מכירתי
 
-═══ פרטים חובה ═══
-- מחירים ספציפיים: "300–450 בהט (~30–45 ש"ח)", לא "כ-X בהט"
-- שמות מקומות: תעתיק עברי + אנגלית בסוגריים: "ביג בודהה (Big Buddha)"
+פרטים חובה:
+- מחירים ספציפיים: "300-450 בהט (כ-30-45 שקל)", לא "כ-X בהט"
+- שמות מקומות: תעתיק עברי + אנגלית בסוגריים
 - שעות פתיחה כשרלוונטי
-- הימנע מ: "מומלץ מאוד", "חוויה בלתי נשכחת", "מגוון רחב" — ניסוחי AI שחוקים
+- הימנע מ: "מומלץ מאוד", "חוויה בלתי נשכחת", "מגוון רחב"
 
-═══ מותאם לחיפוש AI ═══
+מותאם לחיפוש AI:
 - כלול שאלה ותשובה ישירה בפורמט FAQ לפחות פעם אחת
 - כתוב משפט תשובה ישיר לשאלה הכי סבירה על הנושא
-- השתמש ב-<strong> למילות מפתח עיקריות
+- השתמש ב-strong למילות מפתח עיקריות
 
 החזר בדיוק כך, ללא טקסט נוסף:
 
 <TITLE>כותרת SEO מושכת עד 60 תווים</TITLE>
 
-<FOCUS_KEYWORD>מילת המפתח הראשית (3-4 מילים בעברית)</FOCUS_KEYWORD>
+<FOCUS_KEYWORD>מילת המפתח הראשית 3-4 מילים בעברית</FOCUS_KEYWORD>
 
-<EXCERPT>תקציר 1-2 משפטים, מושך, עד 160 תווים</EXCERPT>
+<EXCERPT>תקציר 1-2 משפטים מושך עד 160 תווים</EXCERPT>
 
 <CONTENT>
-תוכן מלא ב-HTML — h2, h3, p, ul, li, strong, table כשרלוונטי
+תוכן מלא ב-HTML עם h2 h3 p ul li strong table כשרלוונטי
 </CONTENT>
 
-<SEO_TITLE>כותרת SEO מלאה עד 60 תווים (שונה מ-TITLE, כולל מילת מפתח)</SEO_TITLE>
+<SEO_TITLE>כותרת SEO מלאה עד 60 תווים שונה מ-TITLE כולל מילת מפתח</SEO_TITLE>
 
-<META_DESCRIPTION>תיאור מטא לגוגל, 120-155 תווים, כולל מילת מפתח, מסתיים ב-CTA</META_DESCRIPTION>
+<META_DESCRIPTION>תיאור מטא לגוגל 120-155 תווים כולל מילת מפתח מסתיים ב-CTA</META_DESCRIPTION>
 
-<IMAGE_QUERY>3-4 מילים באנגלית לחיפוש תמונה מ-Unsplash (beach, temple, food וכו')</IMAGE_QUERY>`;
+<IMAGE_QUERY>3-4 מילים באנגלית לחיפוש תמונה מ-Unsplash</IMAGE_QUERY>`;
 }
 
-// ── פרסור תגובה ────────────────────────────────────────────
 function parseResponse(text) {
   const extract = (tag) => {
     const m = text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
@@ -96,7 +93,6 @@ function parseResponse(text) {
   const content = extract('CONTENT');
 
   if (!title || !content) {
-    // JSON fallback
     log('⚠️ XML לא נמצא, מנסה JSON...');
     let cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const jm = cleaned.match(/\{[\s\S]*\}/);
@@ -111,11 +107,13 @@ function parseResponse(text) {
             excerpt: p.excerpt || p.title,
             content: p.content,
             seoTitle: p.seoTitle || p.title,
-            metaDescription: p.metaDescription || p.excerpt || '',
+            metaDescription: p.metaDescription || '',
             imageQuery: p.imageQuery || 'koh samui thailand beach',
           };
         }
-      } catch (e) { log(`❌ JSON נכשל: ${e.message}`); }
+      } catch (e) {
+        log(`❌ JSON נכשל: ${e.message}`);
+      }
     }
     log(`Raw (300): ${text.substring(0, 300)}`);
     throw new Error('לא הצלחנו לפרסר את תגובת Claude');
@@ -133,7 +131,6 @@ function parseResponse(text) {
   };
 }
 
-// ── Claude API ──────────────────────────────────────────────
 async function generateArticle(prompt) {
   log('🤖 קורא ל-Claude...');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -156,7 +153,6 @@ async function generateArticle(prompt) {
   return parseResponse(raw);
 }
 
-// ── תמונה מ-Unsplash ────────────────────────────────────────
 async function fetchUnsplashImage(query) {
   const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
   if (!UNSPLASH_KEY) {
@@ -173,13 +169,11 @@ async function fetchUnsplashImage(query) {
     const data = await res.json();
     const photo = data.results?.[0];
     if (!photo) return null;
-    log(`📸 תמונה: ${photo.urls.regular} (by ${photo.user.name})`);
+    log(`📸 תמונה נמצאה: by ${photo.user.name}`);
     return {
       url: photo.urls.regular,
-      thumbUrl: photo.urls.small,
       alt: photo.alt_description || query,
       credit: photo.user.name,
-      creditUrl: photo.user.links.html,
     };
   } catch (e) {
     log(`⚠️ Unsplash שגיאה: ${e.message}`);
@@ -187,16 +181,13 @@ async function fetchUnsplashImage(query) {
   }
 }
 
-// ── העלאת תמונה ל-WP ────────────────────────────────────────
 async function uploadImageToWP(imageData, wpBase, auth) {
   if (!imageData) return null;
   try {
-    // הורד את התמונה
     const imgRes = await fetch(imageData.url);
     if (!imgRes.ok) return null;
     const buffer = await imgRes.buffer();
 
-    // העלה ל-WP Media Library
     const uploadRes = await fetch(`${wpBase}/wp-json/wp/v2/media`, {
       method: 'POST',
       headers: {
@@ -215,13 +206,9 @@ async function uploadImageToWP(imageData, wpBase, auth) {
     const media = await uploadRes.json();
     log(`📸 תמונה הועלתה ל-WP: ID ${media.id}`);
 
-    // עדכן alt text
     await fetch(`${wpBase}/wp-json/wp/v2/media/${media.id}`, {
       method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
       body: JSON.stringify({ alt_text: imageData.alt }),
     });
 
@@ -232,7 +219,6 @@ async function uploadImageToWP(imageData, wpBase, auth) {
   }
 }
 
-// ── קטגוריה ──────────────────────────────────────────────────
 async function getOrCreateCategory(slug, name, wpBase, auth) {
   const r = await fetch(`${wpBase}/wp-json/wp/v2/categories?slug=${slug}&per_page=1`, {
     headers: { Authorization: `Basic ${auth}` },
@@ -252,91 +238,7 @@ async function getOrCreateCategory(slug, name, wpBase, auth) {
   return cat.id;
 }
 
-// ── פרסום ל-WP עם Yoast SEO ─────────────────────────────────
-async function publishToWordPress(article, topicData, featuredImageId) {
-  const wpBase = process.env.WP_SITE_URL.replace(/\/$/, '');
-  const auth = Buffer.from(`${process.env.WP_USER}:${process.env.WP_APP_PASSWORD}`).toString('base64');
-
-  log('📤 מפרסם ל-WordPress...');
-  const categoryId = await getOrCreateCategory(
-    topicData.categorySlug, topicData.categoryHebrew, wpBase, auth
-  );
-
-  // בנה schema FAQ אם יש שאלות בתוכן
-  const faqSchema = buildFAQSchema(article.content, article.title);
-
-  // הוסף schema לסוף התוכן
-  const contentWithSchema = article.content + (faqSchema ? `\n<!-- wp:html -->\n<script type="application/ld+json">${JSON.stringify(faqSchema)}</script>\n<!-- /wp:html -->` : '');
-
-  const postData = {
-    title: article.title,
-    content: contentWithSchema,
-    excerpt: article.excerpt,
-    status: 'publish',
-    categories: [categoryId],
-    comment_status: 'open',
-    ping_status: 'closed',
-    // Yoast SEO fields
-    meta: {
-      _yoast_wpseo_title: article.seoTitle,
-      _yoast_wpseo_metadesc: article.metaDescription,
-      _yoast_wpseo_focuskw: article.focusKeyword,
-      yoast_wpseo_title: article.seoTitle,
-      yoast_wpseo_metadesc: article.metaDescription,
-      yoast_wpseo_focuskw: article.focusKeyword,
-    },
-  };
-
-  // הוסף Featured Image אם קיים
-  if (featuredImageId) {
-    postData.featured_media = featuredImageId;
-  }
-
-  const res = await fetch(`${wpBase}/wp-json/wp/v2/posts`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
-    body: JSON.stringify(postData),
-  });
-
-  if (!res.ok) throw new Error(`WP ${res.status}: ${await res.text()}`);
-  const post = await res.json();
-
-  const post = await res.json();
-
-  // עדכון Yoast SEO בנפרד
-  if (article.focusKeyword || article.metaDescription) {
-    try {
-      await fetch(`${wpBase}/wp-json/wp/v2/posts/${post.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
-        body: JSON.stringify({
-          meta: {
-            _yoast_wpseo_focuskw: article.focusKeyword,
-            _yoast_wpseo_metadesc: article.metaDescription,
-            _yoast_wpseo_title: article.seoTitle,
-          }
-        }),
-      });
-      log('✅ Yoast SEO עודכן');
-    } catch (e) {
-      log(`⚠️ Yoast עדכון נכשל: ${e.message}`);
-    }
-  }
-
-  log(`🎉 פורסם!`);
-  log(`   כותרת: ${post.title.rendered}`);
-  log(`   URL: ${post.link}`);
-  log(`🎉 פורסם!`);
-  log(`   כותרת: ${post.title.rendered}`);
-  log(`   URL: ${post.link}`);
-  log(`   מילת מפתח: ${article.focusKeyword}`);
-  log(`   תמונה: ${featuredImageId ? 'כן' : 'לא'}`);
-  return post;
-}
-
-// ── FAQ Schema ────────────────────────────────────────────────
 function buildFAQSchema(content, pageTitle) {
-  // חלץ שאלות ותשובות מה-HTML
   const faqMatches = [...content.matchAll(/<h3[^>]*>([^<]*\?[^<]*)<\/h3>\s*<p[^>]*>([\s\S]*?)<\/p>/gi)];
   if (faqMatches.length === 0) return null;
 
@@ -359,7 +261,76 @@ function buildFAQSchema(content, pageTitle) {
   };
 }
 
-// ── Main ──────────────────────────────────────────────────────
+async function publishToWordPress(article, topicData, featuredImageId) {
+  const wpBase = process.env.WP_SITE_URL.replace(/\/$/, '');
+  const auth = Buffer.from(`${process.env.WP_USER}:${process.env.WP_APP_PASSWORD}`).toString('base64');
+
+  log('📤 מפרסם ל-WordPress...');
+  const categoryId = await getOrCreateCategory(
+    topicData.categorySlug, topicData.categoryHebrew, wpBase, auth
+  );
+
+  const faqSchema = buildFAQSchema(article.content, article.title);
+  const contentWithSchema = article.content + (faqSchema
+    ? `\n<!-- wp:html -->\n<script type="application/ld+json">${JSON.stringify(faqSchema)}</script>\n<!-- /wp:html -->`
+    : '');
+
+  const postData = {
+    title: article.title,
+    content: contentWithSchema,
+    excerpt: article.excerpt,
+    status: 'publish',
+    categories: [categoryId],
+    comment_status: 'open',
+    ping_status: 'closed',
+    meta: {
+      _yoast_wpseo_title: article.seoTitle,
+      _yoast_wpseo_metadesc: article.metaDescription,
+      _yoast_wpseo_focuskw: article.focusKeyword,
+    },
+  };
+
+  if (featuredImageId) {
+    postData.featured_media = featuredImageId;
+  }
+
+  const res = await fetch(`${wpBase}/wp-json/wp/v2/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+    body: JSON.stringify(postData),
+  });
+
+  if (!res.ok) throw new Error(`WP ${res.status}: ${await res.text()}`);
+  const post = await res.json();
+
+  // עדכון Yoast SEO בנפרד (פעמיים לוודא שנשמר)
+  if (article.focusKeyword || article.metaDescription) {
+    try {
+      await fetch(`${wpBase}/wp-json/wp/v2/posts/${post.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify({
+          meta: {
+            _yoast_wpseo_focuskw: article.focusKeyword,
+            _yoast_wpseo_metadesc: article.metaDescription,
+            _yoast_wpseo_title: article.seoTitle,
+          },
+        }),
+      });
+      log('✅ Yoast SEO עודכן');
+    } catch (e) {
+      log(`⚠️ Yoast עדכון נכשל: ${e.message}`);
+    }
+  }
+
+  log(`🎉 פורסם!`);
+  log(`   כותרת: ${post.title.rendered}`);
+  log(`   URL: ${post.link}`);
+  log(`   מילת מפתח: ${article.focusKeyword}`);
+  log(`   תמונה: ${featuredImageId ? 'כן' : 'לא'}`);
+  return post;
+}
+
 async function main() {
   log('🌴 Koh Samui Content Bot v4 — מתחיל');
 
@@ -369,22 +340,16 @@ async function main() {
   }
 
   try {
-    // 1. בחר נושא
     const topicData = selectTopic();
-
-    // 2. צור מאמר
     const article = await generateArticle(buildPrompt(topicData));
 
-    // 3. שלוף תמונה מ-Unsplash
     log(`🔍 מחפש תמונה: "${article.imageQuery}"...`);
     const imageData = await fetchUnsplashImage(article.imageQuery);
 
-    // 4. העלה תמונה ל-WP
     const wpBase = process.env.WP_SITE_URL.replace(/\/$/, '');
     const auth = Buffer.from(`${process.env.WP_USER}:${process.env.WP_APP_PASSWORD}`).toString('base64');
     const featuredImageId = await uploadImageToWP(imageData, wpBase, auth);
 
-    // 5. פרסם
     await publishToWordPress(article, topicData, featuredImageId);
 
     log('✅ הצלחה מלאה!');
