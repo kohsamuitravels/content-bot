@@ -40,6 +40,10 @@ jobs:
           WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
           WP_USER: ${{ secrets.WP_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          AGODA_SITE_ID: ${{ secrets.AGODA_SITE_ID }}
+          AGODA_API_KEY: ${{ secrets.AGODA_API_KEY }}
+          VIATOR_API_KEY: ${{ secrets.VIATOR_API_KEY }}
+          VIATOR_PARTNER_ID: ${{ secrets.VIATOR_PARTNER_ID }}
           TOPIC_OVERRIDE: ${{ github.event.inputs.topic }}
           CATEGORY_OVERRIDE: ${{ github.event.inputs.category }}
         run: node generate-and-publish.js
