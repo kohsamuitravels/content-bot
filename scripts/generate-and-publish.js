@@ -183,7 +183,7 @@ async function publishToWordPress(article, topicData) {
 
 async function main() {
   log('🌴 Koh Samui Content Bot v3 — מתחיל...');
-  const required = ['CLAUDE_API_KEY', 'WP_SITE_URL', 'WP_USER', 'WP_APP_PASSWORD', 'AGODA_SITE_ID', 'AGODA_API_KEY', 'VIATOR_API_KEY', 'VIATOR_PARTNER_ID'];
+  const required = ['CLAUDE_API_KEY', 'WP_SITE_URL', 'WP_USER', 'WP_APP_PASSWORD'];
   for (const key of required) {
     if (!process.env[key]) throw new Error(`חסר משתנה סביבה: ${key}`);
   }
