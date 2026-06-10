@@ -15,7 +15,6 @@ function saveLogs() {
 
 // ---- קביעת נושא ----
 function selectTopic() {
-  // אפשר לעקוף דרך env (מ-workflow_dispatch)
   const override = process.env.TOPIC_OVERRIDE?.trim();
   const catOverride = process.env.CATEGORY_OVERRIDE?.trim();
 
@@ -30,10 +29,9 @@ function selectTopic() {
     };
   }
 
-  // חישוב מספר הריצה לפי שעה + יום (כדי לפזר על פני הנושאים)
   const now = new Date();
   const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-  const hourSlot = Math.floor(now.getUTCHours() / 7); // 0/1/2 לפי שלוש הפעמות ביום
+  const hourSlot = Math.floor(now.getUTCHours() / 7);
   const runNumber = dayOfYear * 3 + hourSlot;
 
   const selected = getTopicForRun(runNumber);
@@ -44,33 +42,25 @@ function selectTopic() {
 
 // ---- בניית פרומפט ----
 function buildPrompt(topicData) {
-  return `אתה כותב תוכן מקצועי לאתר תיירות ישראלי בשם "Koh Samui Travels" (koh-samui-travels.com).
+  return `אתה כותב תוכן מקצועי לאתר תיירות ישראלי בשם "Koh Samui Travels".
 הקהל: ישראלים שמתכננים טיול לקוסמוי, תאילנד.
-שפה: עברית תקינה, קולחת, כתיבה חמה ואישית (לא יבשה).
-כיוון טקסט: RTL.
+שפה: עברית תקינה, קולחת, חמה ואישית.
 
-כתוב מאמר בלוג מלא על הנושא הבא:
+כתוב מאמר בלוג על הנושא:
 "${topicData.topic}"
-
 קטגוריה: ${topicData.categoryHebrew}
 
-דרישות המאמר:
-- אורך: 800-1200 מילים
-- כולל H2 וH3 לכותרות משנה
-- כולל רשימות bullet points או מספרים כשרלוונטי
-- טון: מדריך ידידותי, כמו חבר שהיה שם
-- כלול טיפים פרקטיים וספציפיים (מחירים בבהט, שעות, שמות מקומות)
-- אזכר שמות בתאי עם תעתיק עברי
-- סיום עם CTA קצר שמזמין לקרוא עוד באתר
+דרישות:
+- אורך: 600-900 מילים (לא יותר!)
+- כותרות משנה עם <h2> ו-<h3>
+- רשימות עם <ul><li> כשרלוונטי
+- טיפים פרקטיים עם מחירים בבהט ושמות מקומות
+- סיום עם משפט CTA אחד
 
-פורמט הפלט — החזר אך ורק JSON תקני, ללא backticks, ללא הקדמה:
-{
-  "title": "כותרת המאמר",
-  "excerpt": "תקציר קצר של 1-2 משפטים",
-  "content": "תוכן המאמר ב-HTML (שימוש ב-<h2>, <h3>, <p>, <ul>, <li>, <strong>)",
-  "tags": ["תג1", "תג2", "תג3", "תג4", "תג5"],
-  "seoDescription": "תיאור מטא לגוגל (עד 155 תווים)"
-}`;
+החזר JSON בדיוק בפורמט הזה (ללא backticks, ללא טקסט נוסף לפני או אחרי):
+{"title":"כותרת כאן","excerpt":"תקציר 1-2 משפטים כאן","content":"HTML כאן","seoDescription":"תיאור עד 155 תווים"}
+
+חשוב מאוד: בתוך ה-content אל תשתמש במרכאות כפולות - השתמש רק במרכאות בודדות לתוך ה-HTML.`;
 }
 
 // ---- קריאה ל-Claude API ----
@@ -98,24 +88,31 @@ async function generateArticle(prompt) {
 
   const data = await response.json();
   const rawText = data.content[0].text.trim();
-
   log('✅ קיבלנו תגובה מ-Claude');
+  log(`📏 אורך תגובה: ${rawText.length} תווים`);
 
-  // ניקוי מקרים של backticks עם json
-  const cleaned = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+  let cleaned = rawText
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    cleaned = jsonMatch[0];
+  }
 
   try {
     return JSON.parse(cleaned);
   } catch (e) {
     log(`❌ שגיאת JSON: ${e.message}`);
-    log(`Raw response (200 תווים): ${rawText.substring(0, 200)}`);
+    log(`Raw (300 תווים): ${rawText.substring(0, 300)}`);
     throw new Error('Claude לא החזיר JSON תקני');
   }
 }
 
 // ---- מציאת/יצירת Category ID ב-WP ----
 async function getOrCreateCategory(slug, name, wpBase, auth) {
-  // חפש קטגוריה קיימת
   const searchRes = await fetch(
     `${wpBase}/wp-json/wp/v2/categories?slug=${slug}&per_page=1`,
     { headers: { Authorization: `Basic ${auth}` } }
@@ -127,7 +124,6 @@ async function getOrCreateCategory(slug, name, wpBase, auth) {
     return existing[0].id;
   }
 
-  // צור קטגוריה חדשה
   const createRes = await fetch(`${wpBase}/wp-json/wp/v2/categories`, {
     method: 'POST',
     headers: {
@@ -154,7 +150,6 @@ async function publishToWordPress(article, topicData) {
 
   log(`📤 מפרסם ל-WordPress: ${wpBase}`);
 
-  // קבל/צור category
   const categoryId = await getOrCreateCategory(
     topicData.categorySlug,
     topicData.categoryHebrew,
@@ -162,14 +157,13 @@ async function publishToWordPress(article, topicData) {
     auth
   );
 
-  // בנה את פוסט ה-WP
   const postData = {
     title: article.title,
     content: article.content,
     excerpt: article.excerpt,
     status: 'publish',
     categories: [categoryId],
-    tags: [],        // אפשר להוסיף tag IDs בעתיד
+    tags: [],
     meta: {
       _yoast_wpseo_metadesc: article.seoDescription || '',
     },
@@ -196,7 +190,6 @@ async function publishToWordPress(article, topicData) {
   log(`   כותרת: ${post.title.rendered}`);
   log(`   URL: ${post.link}`);
   log(`   ID: ${post.id}`);
-  log(`   קטגוריה: ${topicData.categoryHebrew}`);
   return post;
 }
 
@@ -204,25 +197,17 @@ async function publishToWordPress(article, topicData) {
 async function main() {
   log('🌴 Koh Samui Content Bot — מתחיל...');
 
-  // בדיקת משתני סביבה
   const required = ['CLAUDE_API_KEY', 'WP_SITE_URL', 'WP_USER', 'WP_APP_PASSWORD'];
   for (const key of required) {
     if (!process.env[key]) throw new Error(`חסר משתנה סביבה: ${key}`);
   }
 
   try {
-    // 1. בחר נושא
     const topicData = selectTopic();
-
-    // 2. צור מאמר עם Claude
     const prompt = buildPrompt(topicData);
     const article = await generateArticle(prompt);
-
-    log(`📝 כותרת שנוצרה: "${article.title}"`);
-
-    // 3. פרסם ל-WordPress
+    log(`📝 כותרת: "${article.title}"`);
     await publishToWordPress(article, topicData);
-
     log('✅ ריצה הסתיימה בהצלחה!');
   } catch (err) {
     log(`❌ שגיאה: ${err.message}`);
