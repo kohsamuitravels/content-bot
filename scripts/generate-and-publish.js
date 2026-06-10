@@ -301,6 +301,31 @@ async function publishToWordPress(article, topicData, featuredImageId) {
   if (!res.ok) throw new Error(`WP ${res.status}: ${await res.text()}`);
   const post = await res.json();
 
+  const post = await res.json();
+
+  // עדכון Yoast SEO בנפרד
+  if (article.focusKeyword || article.metaDescription) {
+    try {
+      await fetch(`${wpBase}/wp-json/wp/v2/posts/${post.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify({
+          meta: {
+            _yoast_wpseo_focuskw: article.focusKeyword,
+            _yoast_wpseo_metadesc: article.metaDescription,
+            _yoast_wpseo_title: article.seoTitle,
+          }
+        }),
+      });
+      log('✅ Yoast SEO עודכן');
+    } catch (e) {
+      log(`⚠️ Yoast עדכון נכשל: ${e.message}`);
+    }
+  }
+
+  log(`🎉 פורסם!`);
+  log(`   כותרת: ${post.title.rendered}`);
+  log(`   URL: ${post.link}`);
   log(`🎉 פורסם!`);
   log(`   כותרת: ${post.title.rendered}`);
   log(`   URL: ${post.link}`);
