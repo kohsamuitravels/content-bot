@@ -1,0 +1,54 @@
+name: Koh Samui Content Bot 🌴
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+    - cron: '0 10 * * *'
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'נושא ספציפי (אופציונלי)'
+        required: false
+        default: ''
+      category:
+        description: 'קטגוריה ספציפית (אופציונלי)'
+        required: false
+        default: ''
+
+jobs:
+  publish-article:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./scripts
+
+      - name: Generate & Publish Article
+        env:
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          TOPIC_OVERRIDE: ${{ github.event.inputs.topic }}
+          CATEGORY_OVERRIDE: ${{ github.event.inputs.category }}
+        run: node generate-and-publish.js
+        working-directory: ./scripts
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-log-${{ github.run_id }}
+          path: scripts/last-run.log
+          retention-days: 7
