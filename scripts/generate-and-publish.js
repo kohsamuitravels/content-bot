@@ -79,20 +79,45 @@ function buildPrompt(topicData) {
 }
 
 function parseResponse(text) {
+  // ניסיון 1 — XML tags
   const extract = (tag) => {
-    const match = text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
-    return match ? match[1].trim() : null;
+    const match = text.match(new RegExp(`<${tag}>[\\s\\S]*?<\\/${tag}>`));
+    if (match) return match[0].replace(`<${tag}>`, '').replace(`</${tag}>`, '').trim();
+    return null;
   };
-  const title = extract('TITLE');
-  const excerpt = extract('EXCERPT');
-  const content = extract('CONTENT');
-  const seo = extract('SEO');
-  if (!title || !content) {
-    log(`Raw response (500 תווים): ${text.substring(0, 500)}`);
-    throw new Error('תגובת Claude חסרה TITLE או CONTENT');
+  const titleXml = extract('TITLE');
+  const contentXml = extract('CONTENT');
+
+  if (titleXml && contentXml) {
+    const excerpt = extract('EXCERPT');
+    const seo = extract('SEO');
+    log(`✅ פורסר XML — כותרת: "${titleXml}"`);
+    return { title: titleXml, excerpt: excerpt || titleXml, content: contentXml, seoDescription: seo || '' };
   }
-  log(`✅ פורסר בהצלחה — כותרת: "${title}"`);
-  return { title, excerpt: excerpt || title, content, seoDescription: seo || '' };
+
+  // ניסיון 2 — JSON fallback
+  log('⚠️ XML לא נמצא, מנסה JSON...');
+  let cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) cleaned = jsonMatch[0];
+
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed.title && parsed.content) {
+      log(`✅ פורסר JSON — כותרת: "${parsed.title}"`);
+      return {
+        title: parsed.title,
+        excerpt: parsed.excerpt || parsed.title,
+        content: parsed.content,
+        seoDescription: parsed.seoDescription || '',
+      };
+    }
+  } catch (e) {
+    log(`❌ JSON נכשל: ${e.message}`);
+  }
+
+  log(`Raw (300): ${text.substring(0, 300)}`);
+  throw new Error('לא הצלחנו לפרסר את תגובת Claude');
 }
 
 async function generateArticle(prompt) {
