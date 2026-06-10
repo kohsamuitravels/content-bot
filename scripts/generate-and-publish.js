@@ -12,6 +12,25 @@ function saveLogs() {
   fs.writeFileSync('last-run.log', logs.join('\n'), 'utf8');
 }
 
+// ── מניעת כפילויות — קובץ published.json ────────────────────
+const PUBLISHED_FILE = 'published.json';
+
+function loadPublished() {
+  try {
+    if (fs.existsSync(PUBLISHED_FILE)) {
+      return JSON.parse(fs.readFileSync(PUBLISHED_FILE, 'utf8'));
+    }
+  } catch (e) {
+    log(`⚠️ לא הצלחנו לטעון published.json: ${e.message}`);
+  }
+  return { topics: [], lastRun: null };
+}
+
+function savePublished(data) {
+  fs.writeFileSync(PUBLISHED_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+// ── בחירת נושא (עם מניעת כפילויות) ─────────────────────────
 function selectTopic() {
   const override = process.env.TOPIC_OVERRIDE?.trim();
   const catOverride = process.env.CATEGORY_OVERRIDE?.trim();
@@ -24,14 +43,57 @@ function selectTopic() {
       topic: override,
     };
   }
+
+  // טען נושאים שכבר פורסמו
+  const published = loadPublished();
+  const publishedTopics = new Set(published.topics || []);
+  log(`📋 נושאים שפורסמו: ${publishedTopics.size} מתוך ${getTotalTopics()}`);
+
+  // בנה רשימת כל הנושאים
+  const allTopics = [];
+  for (const [catKey, catData] of Object.entries(CATEGORIES)) {
+    for (const topic of catData.topics) {
+      allTopics.push({
+        category: catKey,
+        categorySlug: catData.wpSlug,
+        categoryHebrew: catData.hebrewName,
+        topic,
+      });
+    }
+  }
+
+  // מצא נושא שעוד לא פורסם
+  const unpublished = allTopics.filter(t => !publishedTopics.has(t.topic));
+
+  if (unpublished.length === 0) {
+    log('🔄 כל הנושאים פורסמו — מתחיל מחזור חדש');
+    // אפס ובחר נושא ראשון
+    savePublished({ topics: [], lastRun: new Date().toISOString() });
+    return allTopics[0];
+  }
+
+  // בחר נושא לפי הזמן (כדי שריצות מקבילות יבחרו נושאים שונים)
   const now = new Date();
-  const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-  const runNumber = dayOfYear * 20 + Math.floor(now.getUTCHours() / 1.2);
-  const selected = getTopicForRun(runNumber);
-  log(`🔄 ריצה #${runNumber} | נושא: "${selected.topic}" | ${selected.categoryHebrew}`);
+  const idx = Math.floor(now.getTime() / 60000) % unpublished.length;
+  const selected = unpublished[idx];
+
+  log(`📌 נושא: "${selected.topic}" | ${selected.categoryHebrew}`);
+  log(`📊 נותרו: ${unpublished.length - 1} נושאים לא מכוסים`);
   return selected;
 }
 
+// ── סימון נושא כפורסם ───────────────────────────────────────
+function markPublished(topic) {
+  const data = loadPublished();
+  if (!data.topics.includes(topic)) {
+    data.topics.push(topic);
+  }
+  data.lastRun = new Date().toISOString();
+  savePublished(data);
+  log(`✅ נושא סומן כפורסם (${data.topics.length} סה"כ)`);
+}
+
+// ── פרומפט ──────────────────────────────────────────────────
 function buildPrompt(topicData) {
   return `אתה דני כהן — כתב תיירות ישראלי בכיר, 15 שנות ניסיון.
 גרת בקוסמוי 3 חודשים ב-2024. מכיר כל פינה. כתבת לטיים אאוט, ynet טיול, ערוץ 12.
@@ -42,14 +104,14 @@ function buildPrompt(topicData) {
 
 כללי כתיבה:
 שפה: עברית שוטפת, חמה, בגוף ראשון כשמוסיף אמינות
-אורך: 900-1,100 מילים
+אורך: 900-1100 מילים
 פתיחה: סצנה ספציפית, שאלה מפתיעה, או עובדה שרוב האנשים לא יודעים
 
 מבנה חובה:
 1. פתיח מושך (2-3 משפטים) - לא "קוסמוי היא יעד פופולרי"
 2. 3-4 כותרות h2 ברורות
-3. כותרת h3 "הטיפ שאיש לא אומר לך" - משהו שרק מי שגר שם יודע
-4. כותרת h3 "מה חדש ב-2025" - עדכון אמיתי
+3. כותרת h3 בשם "הטיפ שאיש לא אומר לך" - משהו שרק מי שגר שם יודע
+4. כותרת h3 בשם "מה חדש ב-2025" - עדכון אמיתי
 5. טבלה השוואתית אחת לפחות כשרלוונטי
 6. CTA טבעי בסוף - לא מכירתי
 
@@ -64,7 +126,7 @@ function buildPrompt(topicData) {
 - כתוב משפט תשובה ישיר לשאלה הכי סבירה על הנושא
 - השתמש ב-strong למילות מפתח עיקריות
 
-החזר בדיוק כך, ללא טקסט נוסף:
+החזר בדיוק כך ללא טקסט נוסף:
 
 <TITLE>כותרת SEO מושכת עד 60 תווים</TITLE>
 
@@ -83,6 +145,7 @@ function buildPrompt(topicData) {
 <IMAGE_QUERY>3-4 מילים באנגלית לחיפוש תמונה מ-Unsplash</IMAGE_QUERY>`;
 }
 
+// ── פרסור תגובה ─────────────────────────────────────────────
 function parseResponse(text) {
   const extract = (tag) => {
     const m = text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
@@ -131,6 +194,7 @@ function parseResponse(text) {
   };
 }
 
+// ── Claude API ───────────────────────────────────────────────
 async function generateArticle(prompt) {
   log('🤖 קורא ל-Claude...');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -153,6 +217,7 @@ async function generateArticle(prompt) {
   return parseResponse(raw);
 }
 
+// ── Unsplash ────────────────────────────────────────────────
 async function fetchUnsplashImage(query) {
   const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
   if (!UNSPLASH_KEY) {
@@ -181,6 +246,7 @@ async function fetchUnsplashImage(query) {
   }
 }
 
+// ── העלאת תמונה ל-WP ─────────────────────────────────────────
 async function uploadImageToWP(imageData, wpBase, auth) {
   if (!imageData) return null;
   try {
@@ -219,6 +285,7 @@ async function uploadImageToWP(imageData, wpBase, auth) {
   }
 }
 
+// ── קטגוריה ─────────────────────────────────────────────────
 async function getOrCreateCategory(slug, name, wpBase, auth) {
   const r = await fetch(`${wpBase}/wp-json/wp/v2/categories?slug=${slug}&per_page=1`, {
     headers: { Authorization: `Basic ${auth}` },
@@ -238,6 +305,7 @@ async function getOrCreateCategory(slug, name, wpBase, auth) {
   return cat.id;
 }
 
+// ── FAQ Schema ───────────────────────────────────────────────
 function buildFAQSchema(content, pageTitle) {
   const faqMatches = [...content.matchAll(/<h3[^>]*>([^<]*\?[^<]*)<\/h3>\s*<p[^>]*>([\s\S]*?)<\/p>/gi)];
   if (faqMatches.length === 0) return null;
@@ -261,6 +329,7 @@ function buildFAQSchema(content, pageTitle) {
   };
 }
 
+// ── פרסום ל-WP ───────────────────────────────────────────────
 async function publishToWordPress(article, topicData, featuredImageId) {
   const wpBase = process.env.WP_SITE_URL.replace(/\/$/, '');
   const auth = Buffer.from(`${process.env.WP_USER}:${process.env.WP_APP_PASSWORD}`).toString('base64');
@@ -303,7 +372,7 @@ async function publishToWordPress(article, topicData, featuredImageId) {
   if (!res.ok) throw new Error(`WP ${res.status}: ${await res.text()}`);
   const post = await res.json();
 
-  // עדכון Yoast SEO בנפרד (פעמיים לוודא שנשמר)
+  // עדכון Yoast SEO בנפרד
   if (article.focusKeyword || article.metaDescription) {
     try {
       await fetch(`${wpBase}/wp-json/wp/v2/posts/${post.id}`, {
@@ -331,6 +400,7 @@ async function publishToWordPress(article, topicData, featuredImageId) {
   return post;
 }
 
+// ── Main ─────────────────────────────────────────────────────
 async function main() {
   log('🌴 Koh Samui Content Bot v4 — מתחיל');
 
@@ -340,17 +410,26 @@ async function main() {
   }
 
   try {
+    // 1. בחר נושא (לא כפול)
     const topicData = selectTopic();
+
+    // 2. צור מאמר
     const article = await generateArticle(buildPrompt(topicData));
 
+    // 3. תמונה
     log(`🔍 מחפש תמונה: "${article.imageQuery}"...`);
     const imageData = await fetchUnsplashImage(article.imageQuery);
 
+    // 4. העלה תמונה
     const wpBase = process.env.WP_SITE_URL.replace(/\/$/, '');
     const auth = Buffer.from(`${process.env.WP_USER}:${process.env.WP_APP_PASSWORD}`).toString('base64');
     const featuredImageId = await uploadImageToWP(imageData, wpBase, auth);
 
+    // 5. פרסם
     await publishToWordPress(article, topicData, featuredImageId);
+
+    // 6. סמן נושא כפורסם (למניעת כפילויות)
+    markPublished(topicData.topic);
 
     log('✅ הצלחה מלאה!');
     log(`   📝 כותרת: ${article.title}`);
