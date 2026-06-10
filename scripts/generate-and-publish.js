@@ -281,7 +281,9 @@ async function publishToWordPress(article, topicData, featuredImageId) {
       _yoast_wpseo_title: article.seoTitle,
       _yoast_wpseo_metadesc: article.metaDescription,
       _yoast_wpseo_focuskw: article.focusKeyword,
-      _yoast_wpseo_meta_robots_noindex: '0',
+      yoast_wpseo_title: article.seoTitle,
+      yoast_wpseo_metadesc: article.metaDescription,
+      yoast_wpseo_focuskw: article.focusKeyword,
     },
   };
 
