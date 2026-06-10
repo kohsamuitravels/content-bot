@@ -2,9 +2,39 @@ name: Koh Samui Content Bot 🌴
 
 on:
   schedule:
-    - cron: '0 3 * * *'
-    - cron: '0 10 * * *'
-    - cron: '0 17 * * *'
+    # ══════════════════════════════════════════════
+    # מצב BURST — 20 פעמים ביום (40 מאמרים ב-48 שעות)
+    # כל 72 דקות = 20 ריצות ביום
+    # להסיר את ה-# מהשורות למטה ולהוסיף # לשורות ה-NORMAL
+    # ══════════════════════════════════════════════
+
+    # BURST MODE (40 מאמרים ב-48 שעות)
+    - cron: '0 0 * * *'
+    - cron: '12 1 * * *'
+    - cron: '24 2 * * *'
+    - cron: '36 3 * * *'
+    - cron: '48 4 * * *'
+    - cron: '0 6 * * *'
+    - cron: '12 7 * * *'
+    - cron: '24 8 * * *'
+    - cron: '36 9 * * *'
+    - cron: '48 10 * * *'
+    - cron: '0 12 * * *'
+    - cron: '12 13 * * *'
+    - cron: '24 14 * * *'
+    - cron: '36 15 * * *'
+    - cron: '48 16 * * *'
+    - cron: '0 18 * * *'
+    - cron: '12 19 * * *'
+    - cron: '24 20 * * *'
+    - cron: '36 21 * * *'
+    - cron: '48 22 * * *'
+
+    # NORMAL MODE (3 פעמים ביום — שחרר את השורות האלה אחרי 48 שעות)
+    # - cron: '0 3 * * *'
+    # - cron: '0 10 * * *'
+    # - cron: '0 17 * * *'
+
   workflow_dispatch:
     inputs:
       topic:
@@ -12,7 +42,7 @@ on:
         required: false
         default: ''
       category:
-        description: 'קטגוריה ספציפית (אופציונלי)'
+        description: 'קטגוריה (beaches/attractions/food/transport/lifestyle/spa/itinerary/practical)'
         required: false
         default: ''
 
@@ -40,6 +70,7 @@ jobs:
           WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
           WP_USER: ${{ secrets.WP_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
           AGODA_SITE_ID: ${{ secrets.AGODA_SITE_ID }}
           AGODA_API_KEY: ${{ secrets.AGODA_API_KEY }}
           VIATOR_API_KEY: ${{ secrets.VIATOR_API_KEY }}
