@@ -1,14 +1,9 @@
 name: Koh Samui Content Bot 🌴
-
 on:
   schedule:
     # ══════════════════════════════════════════════
     # מצב BURST — 20 פעמים ביום (40 מאמרים ב-48 שעות)
-    # כל 72 דקות = 20 ריצות ביום
-    # להסיר את ה-# מהשורות למטה ולהוסיף # לשורות ה-NORMAL
     # ══════════════════════════════════════════════
-
-    # BURST MODE (40 מאמרים ב-48 שעות)
     - cron: '0 0 * * *'
     - cron: '12 1 * * *'
     - cron: '24 2 * * *'
@@ -29,12 +24,10 @@ on:
     - cron: '24 20 * * *'
     - cron: '36 21 * * *'
     - cron: '48 22 * * *'
-
     # NORMAL MODE (3 פעמים ביום — שחרר את השורות האלה אחרי 48 שעות)
     # - cron: '0 3 * * *'
     # - cron: '0 10 * * *'
     # - cron: '0 17 * * *'
-
   workflow_dispatch:
     inputs:
       topic:
@@ -50,7 +43,8 @@ jobs:
   publish-article:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -79,6 +73,17 @@ jobs:
           CATEGORY_OVERRIDE: ${{ github.event.inputs.category }}
         run: node generate-and-publish.js
         working-directory: ./scripts
+
+      - name: Save published.json to repo
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/published.json || true
+          git diff --staged --quiet || git commit -m "📝 עדכון published.json"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload logs
         if: always()
